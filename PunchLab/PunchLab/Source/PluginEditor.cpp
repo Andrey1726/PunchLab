@@ -414,15 +414,20 @@ void PunchLabEditor::savePresetDialog()
     dialog->addTextEditor ("name", proc.getPresetManager().getCurrentName());
     dialog->addButton ("Save", 1, juce::KeyPress (juce::KeyPress::returnKey));
     dialog->addButton ("Cancel", 0, juce::KeyPress (juce::KeyPress::escapeKey));
-    dialog->enterModalState (true, juce::ModalCallbackFunction::create ([this] (int r)
+
+    // SafePointer создаётся здесь, вне лямбды: MSVC иначе подставляет вместо
+    // PunchLabEditor* указатель на саму лямбду.
+    juce::Component::SafePointer<PunchLabEditor> safe (this);
+    dialog->enterModalState (true, juce::ModalCallbackFunction::create ([safe] (int r)
     {
-        if (r == 1 && dialog != nullptr)
+        if (safe == nullptr) return;
+        if (r == 1 && safe->dialog != nullptr)
         {
-            const auto name = dialog->getTextEditorContents ("name");
-            proc.getPresetManager().saveUserPreset (name);
-            updatePresetLabel();
+            const auto name = safe->dialog->getTextEditorContents ("name");
+            safe->proc.getPresetManager().saveUserPreset (name);
+            safe->updatePresetLabel();
         }
-        juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<PunchLabEditor> (this)]
+        juce::MessageManager::callAsync ([safe]
         {
             if (safe != nullptr) safe->dialog.reset();
         });
@@ -441,15 +446,19 @@ void PunchLabEditor::deletePresetDialog()
     dialog->setLookAndFeel (&lnf);
     dialog->addButton ("Delete", 1, juce::KeyPress (juce::KeyPress::returnKey));
     dialog->addButton ("Cancel", 0, juce::KeyPress (juce::KeyPress::escapeKey));
-    dialog->enterModalState (true, juce::ModalCallbackFunction::create ([this, idx] (int r)
+
+    juce::Component::SafePointer<PunchLabEditor> safe (this);
+    dialog->enterModalState (true, juce::ModalCallbackFunction::create ([safe, idx] (int r)
     {
+        if (safe == nullptr) return;
         if (r == 1)
         {
-            proc.getPresetManager().deleteUserPreset (idx);
-            proc.getPresetManager().load (proc.getPresetManager().getCurrentIndex());
-            updatePresetLabel();
+            auto& manager = safe->proc.getPresetManager();
+            manager.deleteUserPreset (idx);
+            manager.load (manager.getCurrentIndex());
+            safe->updatePresetLabel();
         }
-        juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<PunchLabEditor> (this)]
+        juce::MessageManager::callAsync ([safe]
         {
             if (safe != nullptr) safe->dialog.reset();
         });
