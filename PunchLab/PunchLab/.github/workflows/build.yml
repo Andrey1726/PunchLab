@@ -1,0 +1,26 @@
+# Сборка PunchLab на серверах GitHub (бесплатно для публичных и приватных репозиториев
+# в пределах лимита). Готовый плагин появится во вкладке Actions → последний запуск →
+# Artifacts → PunchLab-Windows-x64-VST3.
+name: Build PunchLab
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -B build -A x64
+
+      - name: Build VST3
+        run: cmake --build build --config Release --target PunchLab_VST3 --parallel
+
+      - name: Upload VST3
+        uses: actions/upload-artifact@v4
+        with:
+          name: PunchLab-Windows-x64-VST3
+          path: build/PunchLab_artefacts/Release/VST3/
